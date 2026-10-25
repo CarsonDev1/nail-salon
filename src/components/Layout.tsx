@@ -4,6 +4,7 @@ import { AccountButton, AccountSummary, SignOutButton } from '@/components/Accou
 import { BarChart3, LayoutGrid, Receipt, Scissors, Table2, Users, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { SalonClock } from '@/components/SalonClock'
 import { usePermissions } from '@/lib/profile'
 import { cn } from '@/lib/utils'
 
@@ -60,6 +61,7 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+        <SalonClock className="mb-3 px-1" />
         <LanguageSwitcher className="mb-3 self-start" />
         <div className="space-y-3 rounded-xl border bg-background p-3">
           <AccountSummary />

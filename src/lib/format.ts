@@ -1,8 +1,7 @@
-import i18n from '@/i18n'
+import { salonTimeZone as TZ } from './env'
 import type { TicketItem } from './types'
 
-/** Dates follow the selected UI language. Money is always US dollars. */
-const dateLocale = () => (i18n.language.startsWith('vi') ? 'vi-VN' : 'en-GB')
+/* ---------- Money: US dollars ---------- */
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
@@ -17,18 +16,65 @@ export const formatMoneyCompact = (cents: number) => {
   return `$${Math.round(d)}`
 }
 
-export const formatDate = (d: string | Date) =>
-  new Intl.DateTimeFormat(dateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d))
+/* ---------- Dates & times: US format, in the salon's time zone ---------- */
 
-export const formatTime = (d: string | Date) =>
-  new Intl.DateTimeFormat(dateLocale(), { hour: '2-digit', minute: '2-digit' }).format(new Date(d))
+const dateFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, month: '2-digit', day: '2-digit', year: 'numeric' })
+const timeFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit' })
+const keyFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+const wallFmt = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ,
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+})
 
-/** YYYY-MM-DD in local time */
-export const dayKey = (d: string | Date) => {
-  const x = new Date(d)
-  const m = String(x.getMonth() + 1).padStart(2, '0')
-  const day = String(x.getDate()).padStart(2, '0')
-  return `${x.getFullYear()}-${m}-${day}`
+/** 10/25/2026 */
+export const formatDate = (d: string | Date) => dateFmt.format(new Date(d))
+
+/** 2:35 PM */
+export const formatTime = (d: string | Date) => timeFmt.format(new Date(d))
+
+/** "PDT", "EST"… — the zone abbreviation right now */
+export const timeZoneAbbr = () =>
+  new Intl.DateTimeFormat('en-US', { timeZone: TZ, timeZoneName: 'short' })
+    .formatToParts(new Date())
+    .find((p) => p.type === 'timeZoneName')?.value ?? TZ
+
+/** YYYY-MM-DD of an instant, as the calendar date in the salon's time zone */
+export const dayKey = (d: string | Date) => keyFmt.format(new Date(d))
+
+export const todayKey = () => dayKey(new Date())
+
+/** Calendar math on YYYY-MM-DD keys (no time zone involved) */
+export const addDays = (key: string, n: number) => {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
+}
+
+/** 2026-10-25 → 10/25/2026 */
+export const formatDayKey = (key: string) => {
+  const [y, m, d] = key.split('-')
+  return `${m}/${d}/${y}`
+}
+
+/** Offset (ms) of the salon time zone from UTC at a given instant; negative in the US. */
+function zoneOffsetMs(at: Date) {
+  const v = Object.fromEntries(wallFmt.formatToParts(at).map((p) => [p.type, Number(p.value)]))
+  const wallAsUtc = Date.UTC(v.year, v.month - 1, v.day, v.hour, v.minute, v.second)
+  return wallAsUtc - Math.floor(at.getTime() / 1000) * 1000
+}
+
+/** The instant a calendar day begins (00:00) in the salon's time zone; handles daylight saving. */
+export const startOfDayInZone = (key: string) => {
+  const [y, m, d] = key.split('-').map(Number)
+  const wall = Date.UTC(y, m - 1, d)
+  let t = wall - zoneOffsetMs(new Date(wall))
+  t = wall - zoneOffsetMs(new Date(t)) // refine once across a daylight-saving change
+  return new Date(t)
 }
 
 export const minutesSince = (iso: string) => Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000))

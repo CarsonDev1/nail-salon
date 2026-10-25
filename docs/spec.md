@@ -51,7 +51,7 @@ Users are **non-technical**: big text, big buttons, few steps, plain English, on
 
 ## 6. UI/UX principles for non-technical users
 - Base font 18px, buttons ≥ 48px tall, large tap targets; big icon + label navigation.
-- Money is US dollars, formatted `$35.00` (stored as integer cents); dates `25/10/2026`.
+- Money is US dollars, formatted `$35.00` (stored as integer cents); dates `10/25/2026`, times `2:35 PM`, in the salon time zone (configurable, default Pacific).
 - Confirmations in plain sentences ("Cancel this bill?"), no technical jargon.
 - Errors in friendly English.
 

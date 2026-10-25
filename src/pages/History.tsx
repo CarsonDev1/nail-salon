@@ -7,26 +7,24 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Loading, PageHeader } from '@/components/PageHeader'
-import { dayKey, formatDate, formatMoney, formatTime, subtotal } from '@/lib/format'
+import { addDays, formatDate, formatDayKey, formatMoney, formatTime, startOfDayInZone, subtotal, todayKey } from '@/lib/format'
 import { useStaff } from '@/lib/queries'
 import { useSb } from '@/lib/supabase'
 import type { Ticket } from '@/lib/types'
-
-const startOfDay = (key: string) => new Date(`${key}T00:00:00`)
 
 export default function History() {
   const { t: tr } = useTranslation()
   const sb = useSb()
   const staff = useStaff()
-  const [day, setDay] = useState(dayKey(new Date()))
+  const [day, setDay] = useState(todayKey())
   const [selected, setSelected] = useState<Ticket | null>(null)
 
   const q = useQuery({
     queryKey: ['paid-tickets', 'day', day],
     queryFn: async () => {
-      const start = startOfDay(day)
-      const end = new Date(start)
-      end.setDate(end.getDate() + 1)
+      // "a day" = midnight to midnight in the salon's time zone
+      const start = startOfDayInZone(day)
+      const end = startOfDayInZone(addDays(day, 1))
       const { data, error } = await sb
         .from('tickets')
         .select('*, ticket_items(*), salon_tables(name)')
@@ -39,11 +37,7 @@ export default function History() {
     },
   })
 
-  const shift = (n: number) => {
-    const d = startOfDay(day)
-    d.setDate(d.getDate() + n)
-    setDay(dayKey(d))
-  }
+  const shift = (n: number) => setDay(addDays(day, n))
 
   const list = q.data ?? []
   const paid = list.filter((t) => t.status === 'paid')
@@ -54,13 +48,13 @@ export default function History() {
     <>
       <PageHeader
         title={tr('history.title')}
-        subtitle={tr('history.subtitle', { date: formatDate(startOfDay(day)), count: paid.length, amount: formatMoney(revenue) })}
+        subtitle={tr('history.subtitle', { date: formatDayKey(day), count: paid.length, amount: formatMoney(revenue) })}
         actions={
           <>
             <Button variant="outline" size="icon" aria-label={tr('history.prev')} onClick={() => shift(-1)}><ChevronLeft /></Button>
             <Input type="date" className="min-w-0 flex-1 sm:w-48 sm:flex-none" value={day} onChange={(e) => e.target.value && setDay(e.target.value)} />
             <Button variant="outline" size="icon" aria-label={tr('history.next')} onClick={() => shift(1)}><ChevronRight /></Button>
-            <Button variant="outline" className="max-sm:w-full" onClick={() => setDay(dayKey(new Date()))}>{tr('history.today')}</Button>
+            <Button variant="outline" className="max-sm:w-full" onClick={() => setDay(todayKey())}>{tr('history.today')}</Button>
           </>
         }
       />

@@ -5,7 +5,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveCo
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loading, PageHeader } from '@/components/PageHeader'
-import { dayKey, formatMoney, formatMoneyCompact } from '@/lib/format'
+import { addDays, dayKey, formatMoney, formatMoneyCompact, startOfDayInZone, todayKey } from '@/lib/format'
 import { useStaff } from '@/lib/queries'
 import { useSb } from '@/lib/supabase'
 import type { Ticket } from '@/lib/types'
@@ -20,13 +20,13 @@ const rangeKey: Record<Range, string> = {
 }
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)']
 
-function rangeStart(r: Range) {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  if (r === '7d') d.setDate(d.getDate() - 6)
-  if (r === '30d') d.setDate(d.getDate() - 29)
-  if (r === 'month') d.setDate(1)
-  return d
+/** First calendar day (YYYY-MM-DD, salon time zone) of the selected range */
+function rangeStartKey(r: Range) {
+  const today = todayKey()
+  if (r === '7d') return addDays(today, -6)
+  if (r === '30d') return addDays(today, -29)
+  if (r === 'month') return `${today.slice(0, 8)}01`
+  return today
 }
 
 const moneyTip = (v: unknown) => formatMoney(Number(v))
@@ -50,7 +50,7 @@ export default function Dashboard() {
         .from('tickets')
         .select('*, ticket_items(*)')
         .eq('status', 'paid')
-        .gte('paid_at', rangeStart(range).toISOString())
+        .gte('paid_at', startOfDayInZone(rangeStartKey(range)).toISOString())
       if (error) throw error
       return data as Ticket[]
     },
@@ -63,12 +63,12 @@ export default function Dashboard() {
 
     // Revenue per day (includes days with zero revenue)
     const byDay = new Map<string, number>()
-    for (let d = rangeStart(range); d <= new Date(); d.setDate(d.getDate() + 1)) byDay.set(dayKey(d), 0)
+    for (let k = rangeStartKey(range), end = todayKey(); k <= end; k = addDays(k, 1)) byDay.set(k, 0)
     tickets.forEach((t) => {
       const k = dayKey(t.paid_at!)
       byDay.set(k, (byDay.get(k) ?? 0) + t.total)
     })
-    const daily = [...byDay].map(([k, v]) => ({ label: `${k.slice(8)}/${k.slice(5, 7)}`, revenue: v }))
+    const daily = [...byDay].map(([k, v]) => ({ label: `${+k.slice(5, 7)}/${+k.slice(8)}`, revenue: v }))
 
     const svc = new Map<string, { name: string; revenue: number; qty: number }>()
     const tech = new Map<string, number>()

@@ -46,11 +46,14 @@ Permissions are enforced in the **database (RLS)**, not just by hiding buttons. 
 - Add a shadcn component: `npx shadcn@latest add <name>`
 
 ## Languages (i18n)
-English and Vietnamese, built with `i18next` + `react-i18next`. Use the **EN | VI** switch (sidebar, phone top bar, sign-in page); the choice is remembered in the browser. On first visit it follows the browser language (Vietnamese browsers get Vietnamese, everything else English). The Clerk sign-in screens switch language too, and dates follow the language (`25/10/2026`).
+English and Vietnamese, built with `i18next` + `react-i18next`. Use the **EN | VI** switch (sidebar, phone top bar, sign-in page); the choice is remembered in the browser. On first visit it follows the browser language (Vietnamese browsers get Vietnamese, everything else English). The Clerk sign-in screens switch language too, (dates and money are always US-style, see below).
 
 - Texts live in `src/i18n/locales/en.json` and `vi.json` — keep both files on the same keys.
 - To add a language: create `src/i18n/locales/<code>.json`, register it in `src/i18n/index.ts` (`LANGUAGES` + `resources`), and map its Clerk pack in `src/main.tsx`.
 - Service and table names are data you enter yourself, so they are not translated.
+
+## Time zone & date format
+Dates and times use the US format (`10/25/2026`, `2:35 PM`) in **the salon's time zone**, whatever time zone the phone or computer is set to — so "today", the daily totals and the bill times are the same on every device. Default is Pacific (`America/Los_Angeles`). Change it with `VITE_SALON_TIMEZONE` in `.env.local` (see `.env.example` for the list) and restart `npm run dev`. The current salon time (e.g. `2:35 PM PDT`) is shown in the sidebar. Daylight-saving changes are handled automatically.
 
 ## Currency
 Everything is in **US dollars** (`$35.00`). Amounts are stored in the database as integer **cents** (`3500`), so there are no rounding errors; the price/discount/tip fields accept `35` or `35.50`.
